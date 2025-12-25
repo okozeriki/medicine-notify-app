@@ -33,32 +33,32 @@ app.get("/image/pills", async (c) => {
 
 // LINE Webhook エンドポイント
 app.post("/webhook", async (c) => {
-	if (!wasmInitialized) {
-		await initResvg();
-		wasmInitialized = true;
+	try {
+		const signature = c.req.header("x-line-signature");
+		if (!signature) {
+			return c.json({ error: "Missing signature" }, 400);
+		}
+
+		const body = await c.req.text();
+
+		// 署名検証
+		const isValid = await verifySignature(
+			body,
+			signature,
+			c.env.LINE_CHANNEL_SECRET,
+		);
+		if (!isValid) {
+			return c.json({ error: "Invalid signature" }, 401);
+		}
+
+		const data = JSON.parse(body);
+		await handleWebhook(data.events, c.env);
+
+		return c.json({ success: true });
+	} catch (error) {
+		console.error("Webhook error:", error);
+		return c.json({ error: String(error) }, 500);
 	}
-
-	const signature = c.req.header("x-line-signature");
-	if (!signature) {
-		return c.json({ error: "Missing signature" }, 400);
-	}
-
-	const body = await c.req.text();
-
-	// 署名検証
-	const isValid = await verifySignature(
-		body,
-		signature,
-		c.env.LINE_CHANNEL_SECRET,
-	);
-	if (!isValid) {
-		return c.json({ error: "Invalid signature" }, 401);
-	}
-
-	const data = JSON.parse(body);
-	await handleWebhook(data.events, c.env);
-
-	return c.json({ success: true });
 });
 
 // LINE署名検証
