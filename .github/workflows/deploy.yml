@@ -59,5 +59,12 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
-          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+
+      # Worker Secrets設定
+      - name: Set Worker Secrets
+        run: |
+          echo "${{ secrets.LINE_CHANNEL_SECRET }}" | bunx wrangler secret put LINE_CHANNEL_SECRET
+          echo "${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}" | bunx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
