@@ -19,7 +19,6 @@
   },
   "dependencies": {
     "@line/bot-sdk": "^10.5.0",
-    "@resvg/resvg-wasm": "^2.6.2",
     "hono": "^4.6.14"
   }
 }
