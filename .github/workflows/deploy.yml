@@ -29,33 +29,6 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      # R2バケット作成
-      - name: Create R2 Bucket
-        run: |
-          bunx wrangler r2 bucket create medicine-images || echo "Bucket may already exist"
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
-      # 画像生成とR2アップロード（初回のみ）
-      - name: Generate and Upload Images
-        run: |
-          # 既に画像があるかチェック
-          if bunx wrangler r2 object get "medicine-images/pills_0_true.png" --file=/dev/null 2>/dev/null; then
-            echo "Images already exist in R2, skipping upload"
-          else
-            echo "Generating and uploading images..."
-            bun run scripts/generate-images.ts
-            for file in generated-images/*.png; do
-              filename=$(basename "$file")
-              echo "Uploading: $filename"
-              bunx wrangler r2 object put "medicine-images/$filename" --file="$file" --content-type="image/png"
-            done
-          fi
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       # D1 IDを取得してwrangler.tomlを更新
       - name: Get D1 Database ID
         id: d1

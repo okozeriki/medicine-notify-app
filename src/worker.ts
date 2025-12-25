@@ -9,30 +9,6 @@ app.get("/", (c) => {
 	return c.text("LINE Bot is running!");
 });
 
-// 薬シート画像エンドポイント（R2から取得）
-app.get("/image/pills", async (c) => {
-	try {
-		const remaining = Number(c.req.query("remaining")) || 0;
-		const takenToday = c.req.query("taken") === "true";
-
-		const filename = `pills_${remaining}_${takenToday}.png`;
-		const object = await c.env.IMAGES.get(filename);
-
-		if (!object) {
-			return c.text("Image not found", 404);
-		}
-
-		const headers = new Headers();
-		headers.set("Content-Type", "image/png");
-		headers.set("Cache-Control", "public, max-age=31536000");
-
-		return new Response(object.body, { headers });
-	} catch (error) {
-		console.error("Image error:", error);
-		return c.text(String(error), 500);
-	}
-});
-
 // LINE Webhook エンドポイント
 app.post("/webhook", async (c) => {
 	try {

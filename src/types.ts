@@ -1,6 +1,5 @@
 export type Env = {
 	DB: D1Database;
-	IMAGES: R2Bucket;
 	LINE_CHANNEL_SECRET: string;
 	LINE_CHANNEL_ACCESS_TOKEN: string;
 	MEDICINE_MAX: string;

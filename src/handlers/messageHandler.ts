@@ -19,7 +19,7 @@ const MESSAGES = {
 	TODAY_NO: "今日はまだ飲んでません",
 };
 
-const BASE_URL = "https://medicine-notify-bot.riki21061216.workers.dev";
+const IMAGE_BASE_URL = "https://raw.githubusercontent.com/okozeriki/medicine-notify-app/main/images";
 
 // Webhookイベント処理
 export async function handleWebhook(
@@ -96,7 +96,7 @@ async function replyMessages(
 
 // 画像URL生成
 function getImageUrl(remaining: number, taken: boolean): string {
-	return `${BASE_URL}/image/pills?remaining=${remaining}&taken=${taken}`;
+	return `${IMAGE_BASE_URL}/pills_${remaining}_${taken}.png`;
 }
 
 // ============================================

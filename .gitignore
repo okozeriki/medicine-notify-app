@@ -41,5 +41,5 @@ data.json
 .wrangler
 .dev.vars
 
-# Generated images
+# Generated images (local only)
 generated-images/
