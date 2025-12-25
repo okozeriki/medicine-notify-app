@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # D1データベース作成（存在しなければ作成）
+      # D1データベース作成
       - name: Create D1 Database
         run: |
           DB_LIST=$(bunx wrangler d1 list --json)
@@ -29,13 +29,39 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      # R2バケット作成
+      - name: Create R2 Bucket
+        run: |
+          BUCKET_LIST=$(bunx wrangler r2 bucket list --json)
+          if ! echo "$BUCKET_LIST" | grep -q "medicine-images"; then
+            echo "Creating R2 bucket..."
+            bunx wrangler r2 bucket create medicine-images
+          else
+            echo "R2 bucket already exists"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      # 画像生成とR2アップロード
+      - name: Generate and Upload Images
+        run: |
+          bun run scripts/generate-images.ts
+          for file in generated-images/*.png; do
+            filename=$(basename "$file")
+            echo "Uploading: $filename"
+            bunx wrangler r2 object put "medicine-images/$filename" --file="$file" --content-type="image/png"
+          done
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       # D1 IDを取得してwrangler.tomlを更新
       - name: Get D1 Database ID
         id: d1
         run: |
           DB_ID=$(bunx wrangler d1 list --json | jq -r '.[] | select(.name=="medicine-db") | .uuid')
           echo "database_id=$DB_ID" >> $GITHUB_OUTPUT
-          echo "Database ID: $DB_ID"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -44,7 +70,6 @@ jobs:
       - name: Update wrangler.toml
         run: |
           sed -i "s/database_id = \".*\"/database_id = \"${{ steps.d1.outputs.database_id }}\"/" wrangler.toml
-          cat wrangler.toml
 
       # マイグレーション実行
       - name: Run D1 Migrations

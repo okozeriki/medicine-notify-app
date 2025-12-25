@@ -40,3 +40,6 @@ data.json
 # Wrangler
 .wrangler
 .dev.vars
+
+# Generated images
+generated-images/

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import { handleWebhook } from "./handlers/messageHandler";
-import { generatePillImage, initResvg } from "./lib/imageGenerator";
 import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -10,20 +9,24 @@ app.get("/", (c) => {
 	return c.text("LINE Bot is running!");
 });
 
-// 薬シート画像エンドポイント
+// 薬シート画像エンドポイント（R2から取得）
 app.get("/image/pills", async (c) => {
 	try {
-		await initResvg();
-
 		const remaining = Number(c.req.query("remaining")) || 0;
 		const takenToday = c.req.query("taken") === "true";
-		const medicineMax = Number(c.env.MEDICINE_MAX) || 28;
 
-		const image = await generatePillImage(remaining, takenToday, medicineMax);
+		const filename = `pills_${remaining}_${takenToday}.png`;
+		const object = await c.env.IMAGES.get(filename);
 
-		return new Response(image, {
-			headers: { "Content-Type": "image/png" },
-		});
+		if (!object) {
+			return c.text("Image not found", 404);
+		}
+
+		const headers = new Headers();
+		headers.set("Content-Type", "image/png");
+		headers.set("Cache-Control", "public, max-age=31536000");
+
+		return new Response(object.body, { headers });
 	} catch (error) {
 		console.error("Image error:", error);
 		return c.text(String(error), 500);
