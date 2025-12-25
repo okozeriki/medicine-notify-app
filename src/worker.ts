@@ -1,8 +1,42 @@
 import { Hono } from "hono";
 import { handleWebhook } from "./handlers/messageHandler";
+import { hasTakenToday } from "./lib/dataStore";
 import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
+
+// Broadcast API で全ユーザーに送信
+async function broadcast(text: string, env: Env): Promise<void> {
+	await fetch("https://api.line.me/v2/bot/message/broadcast", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}`,
+		},
+		body: JSON.stringify({ messages: [{ type: "text", text }] }),
+	});
+}
+
+// スケジュールハンドラー
+async function handleScheduled(env: Env, scheduledTime: Date): Promise<void> {
+	const hour = scheduledTime.getUTCHours();
+	const minute = scheduledTime.getUTCMinutes();
+
+	// 21:00 JST (12:00 UTC) は常にリマインド
+	const isFirstReminder = hour === 12 && minute === 0;
+
+	// それ以外は飲んでない場合のみ
+	if (!isFirstReminder) {
+		const taken = await hasTakenToday(env.DB);
+		if (taken) return;
+	}
+
+	const message = isFirstReminder
+		? "💊 薬の時間だよ！"
+		: "⏰ まだ薬飲んでないよ！";
+
+	await broadcast(message, env);
+}
 
 // ヘルスチェック
 app.get("/", (c) => {
@@ -66,4 +100,13 @@ async function verifySignature(
 	return signature === expectedSignature;
 }
 
-export default app;
+export default {
+	fetch: app.fetch,
+	scheduled: async (
+		event: ScheduledEvent,
+		env: Env,
+		_ctx: ExecutionContext,
+	) => {
+		await handleScheduled(env, new Date(event.scheduledTime));
+	},
+};

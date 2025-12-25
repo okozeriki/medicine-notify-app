@@ -1,8 +1,11 @@
 import type { Env, MedicineHistory, MedicineStatus } from "../types";
 
-// 今日の日付を取得 (YYYY-MM-DD)
+// 今日の日付を取得 (YYYY-MM-DD) - 日本時間
 function getToday(): string {
-	return new Date().toISOString().slice(0, 10);
+	const now = new Date();
+	const jstOffset = 9 * 60; // JST is UTC+9
+	const jstTime = new Date(now.getTime() + jstOffset * 60 * 1000);
+	return jstTime.toISOString().slice(0, 10);
 }
 
 // 現在の状態を取得
