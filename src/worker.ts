@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { handleWebhook } from "./handlers/messageHandler";
-import { generatePillSvg } from "./lib/imageGenerator";
+import { generatePillImage, initResvg } from "./lib/imageGenerator";
 import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
@@ -10,17 +10,24 @@ app.get("/", (c) => {
 	return c.text("LINE Bot is running!");
 });
 
-// 薬シートSVG画像エンドポイント
-app.get("/image/pills", (c) => {
-	const remaining = Number(c.req.query("remaining")) || 0;
-	const takenToday = c.req.query("taken") === "true";
-	const medicineMax = Number(c.env.MEDICINE_MAX) || 28;
+// 薬シート画像エンドポイント
+app.get("/image/pills", async (c) => {
+	try {
+		await initResvg();
 
-	const svg = generatePillSvg(remaining, takenToday, medicineMax);
+		const remaining = Number(c.req.query("remaining")) || 0;
+		const takenToday = c.req.query("taken") === "true";
+		const medicineMax = Number(c.env.MEDICINE_MAX) || 28;
 
-	return new Response(svg, {
-		headers: { "Content-Type": "image/svg+xml" },
-	});
+		const image = await generatePillImage(remaining, takenToday, medicineMax);
+
+		return new Response(image, {
+			headers: { "Content-Type": "image/png" },
+		});
+	} catch (error) {
+		console.error("Image error:", error);
+		return c.text(String(error), 500);
+	}
 });
 
 // LINE Webhook エンドポイント

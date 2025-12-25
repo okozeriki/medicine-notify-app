@@ -6,7 +6,6 @@ import {
 	increaseMedicine,
 	takeMedicine,
 } from "../lib/dataStore";
-import { generatePillText } from "../lib/imageGenerator";
 import type { Env } from "../types";
 
 // メッセージ定数
@@ -16,9 +15,11 @@ const MESSAGES = {
 	DECREASED: (remaining: number) => `減らしました！残り ${remaining} 個`,
 	INCREASED: (remaining: number) => `増やしました！残り ${remaining} 個`,
 	STATUS: (remaining: number) => `残り ${remaining} 個`,
-	TODAY_YES: "今日は既に飲みました ✅",
-	TODAY_NO: "今日はまだ飲んでません ❌",
+	TODAY_YES: "今日は既に飲みました",
+	TODAY_NO: "今日はまだ飲んでません",
 };
+
+const BASE_URL = "https://medicine-notify-bot.riki21061216.workers.dev";
 
 // Webhookイベント処理
 export async function handleWebhook(
@@ -93,10 +94,9 @@ async function replyMessages(
 	});
 }
 
-// 薬シートのテキスト表示を生成
-function getPillDisplay(remaining: number, taken: boolean, env: Env): string {
-	const medicineMax = Number(env.MEDICINE_MAX) || 28;
-	return generatePillText(remaining, taken, medicineMax);
+// 画像URL生成
+function getImageUrl(remaining: number, taken: boolean): string {
+	return `${BASE_URL}/image/pills?remaining=${remaining}&taken=${taken}`;
 }
 
 // ============================================
@@ -114,11 +114,18 @@ async function handleTake(replyToken: string, env: Env): Promise<void> {
 async function handleStatus(replyToken: string, env: Env): Promise<void> {
 	const remaining = await getRemaining(env.DB);
 	const taken = await hasTakenToday(env.DB);
-	const pillDisplay = getPillDisplay(remaining, taken, env);
+	const imageUrl = getImageUrl(remaining, taken);
 
-	await reply(
+	await replyMessages(
 		replyToken,
-		`${MESSAGES.STATUS(remaining)}\n\n${pillDisplay}\n\n✕:飲んだ ●:今日 ○:残り`,
+		[
+			{ type: "text", text: MESSAGES.STATUS(remaining) },
+			{
+				type: "image",
+				originalContentUrl: imageUrl,
+				previewImageUrl: imageUrl,
+			},
+		],
 		env,
 	);
 }
@@ -126,11 +133,18 @@ async function handleStatus(replyToken: string, env: Env): Promise<void> {
 async function handleTodayCheck(replyToken: string, env: Env): Promise<void> {
 	const remaining = await getRemaining(env.DB);
 	const taken = await hasTakenToday(env.DB);
-	const pillDisplay = getPillDisplay(remaining, taken, env);
+	const imageUrl = getImageUrl(remaining, taken);
 
-	await reply(
+	await replyMessages(
 		replyToken,
-		`${taken ? MESSAGES.TODAY_YES : MESSAGES.TODAY_NO}\n\n${pillDisplay}\n\n✕:飲んだ ●:今日 ○:残り`,
+		[
+			{ type: "text", text: taken ? MESSAGES.TODAY_YES : MESSAGES.TODAY_NO },
+			{
+				type: "image",
+				originalContentUrl: imageUrl,
+				previewImageUrl: imageUrl,
+			},
+		],
 		env,
 	);
 }

@@ -1,3 +1,6 @@
+import { Resvg, initWasm } from "@resvg/resvg-wasm";
+import resvgWasm from "../../wasm/resvg.wasm";
+
 const COLS = 4;
 const ROWS = 7;
 const PILL_SIZE = 50;
@@ -7,9 +10,13 @@ const GAP = 8;
 const WIDTH = PADDING * 2 + COLS * PILL_SIZE + (COLS - 1) * GAP;
 const HEIGHT = PADDING * 2 + ROWS * PILL_SIZE + (ROWS - 1) * GAP;
 
-// WASM初期化（不要になった）
+let initialized = false;
+
+// WASM初期化
 export async function initResvg(): Promise<void> {
-	// no-op
+	if (initialized) return;
+	await initWasm(resvgWasm);
+	initialized = true;
 }
 
 // 蛇行パターンでインデックスを取得
@@ -20,12 +27,12 @@ function getSnakeIndex(row: number, col: number): number {
 	return col * ROWS + (ROWS - 1 - row);
 }
 
-// SVG文字列を生成
-export function generatePillSvg(
+// 薬シート画像を生成
+export async function generatePillImage(
 	remaining: number,
 	hasTakenToday: boolean,
 	medicineMax: number,
-): string {
+): Promise<Uint8Array> {
 	const taken = medicineMax - remaining;
 	const todayIndex = hasTakenToday ? -1 : taken;
 	const circles: string[] = [];
@@ -65,35 +72,14 @@ export function generatePillSvg(
 		}
 	}
 
-	return `<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+	const svg = `<svg width="${WIDTH}" height="${HEIGHT}" xmlns="http://www.w3.org/2000/svg">
 		<rect width="100%" height="100%" fill="#FAFAFA"/>
 		${circles.join("\n")}
 	</svg>`;
-}
 
-// テキストで薬の状態を表現
-export function generatePillText(
-	remaining: number,
-	hasTakenToday: boolean,
-	medicineMax: number,
-): string {
-	const taken = medicineMax - remaining;
-	const lines: string[] = [];
-
-	for (let row = 0; row < ROWS; row++) {
-		let line = "";
-		for (let col = 0; col < COLS; col++) {
-			const index = getSnakeIndex(row, col);
-			if (index < taken) {
-				line += "✕ ";
-			} else if (index === (hasTakenToday ? -1 : taken) && !hasTakenToday) {
-				line += "● ";
-			} else {
-				line += "○ ";
-			}
-		}
-		lines.push(line.trim());
-	}
-
-	return lines.join("\n");
+	const resvg = new Resvg(svg, {
+		fitTo: { mode: "width", value: WIDTH },
+	});
+	const pngData = resvg.render();
+	return pngData.asPng();
 }
